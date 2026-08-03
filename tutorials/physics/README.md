@@ -104,14 +104,18 @@ Idle> /process/list Decay
    Decay    RadioactiveDecay
 ```
 
-Detailed control of radioactive decay is provided by the /[grdm][]/ command, for example,
+Detailed control of radioactive decay is provided by the [/process/had/rdm][] command, for example,
 
 ```sh
-/grdm/deselectVolume chamber # disabled radioactive decay in volume "chamber"
-/grdm/nucleusLimits 1 80 # enabled radioactive decay only when z in [1, 80]
+/process/had/rdm/deselectVolume chamber # disabled radioactive decay in volume "chamber"
+/process/had/rdm/nucleusLimits 1 80 # enabled radioactive decay only when z in [1, 80]
+/process/had/rdm/thresholdForVeryLongDecayTime 1e60 year # set it to a large number for long lived isotope to decay
 ```
 
-[grdm]: http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/ForApplicationDeveloper/html/Control/AllResources/Control/UIcommands/_grdm_.html
+The last command is needed for Geant4 versions >=11.2, where its default value is set to 1 year. Any isotope whose lifetime is longer than 1 year will not decay without setting this to a very long time. This is documented in Geant4 [Physics List Guide].
+
+[/process/had/rdm]: https://github.com/Geant4/geant4/blob/master/source/processes/hadronic/models/radioactive_decay/src/G4RadioactiveDecayMessenger.cc
+[Physics List Guide]: https://geant4.web.cern.ch/documentation/dev/plg_html/PhysicsListGuide/hadronic/ui-commands.html
 
 Here is an example to create [Pb210][] on the surface of a cylindrical CsI detector:
 
@@ -137,7 +141,7 @@ Some [isotope][]s in a radioactive [decay chain][] have long [half live][]s. The
 [decay chain]: https://en.wikipedia.org/wiki/Decay_chain
 [half live]: https://en.wikipedia.org/wiki/Half-life
 
-[GEARS][] provides a macro command `/grdm/setTimeWindow` for you to split the chain based on a time window specified by you:
+[GEARS][] provides a macro command `/process/had/rdm/setTimeWindow` for you to split the chain based on a time window specified by you:
 
 ```sh
 PHYSLIST=QGSP_BERT_EMV gears
@@ -150,12 +154,12 @@ PHYSLIST=QGSP_BERT_EMV gears
  # it is saved to another event in the output n-tuple
  # The command can be run before or after /run/initialize,
  # but only becomes available after radioactive decay is enabled
- /grdm/setTimeWindow 1 s
+ /process/had/rdm/setTimeWindow 1 s
 
  # a time window <= 0 will disable splitting:
- # /grdm/setTimeWindow 0
+ # /process/had/rdm/setTimeWindow 0
  # show detailed instruction of this command:
- help /grdm/setTimeWindow
+ help /process/had/rdm/setTimeWindow
 
  # turn on tracking and event verbose
  # to understand Geant4 tracking and stacking processes
@@ -182,7 +186,7 @@ For the impatient, new particles created after the specified time window in a de
 
 #### Stop decay chain
 
-If the half life of a daughter nucleus is longer than a measurement duration, there is no need to simulate its decay anymore. In this case, instead of splitting its decay to another event, we should simply stop its radioactive decay completely. This is done using a Geant4 macro command `/grdm/nucleusLimits`, for example,
+If the half life of a daughter nucleus is longer than a measurement duration, there is no need to simulate its decay anymore. In this case, instead of splitting its decay to another event, we should simply stop its radioactive decay completely. This is done using a Geant4 macro command `/process/had/rdm/nucleusLimits`, for example,
 
 ```sh
 PHYSLIST=QGSP_BERT gears
@@ -197,7 +201,7 @@ PHYSLIST=QGSP_BERT gears
 # since Np-237, the daughter of Am-241, is not in the following range,
 # it will not alpha-decay into its daughter nucleus in this simulation.
 # The simulation will stop when Np-237 decays into its ground state.
-/grdm/nucleusLimits 241 241 95 95
+/process/had/rdm/nucleusLimits 241 241 95 95
 ```
 
 ### Optical processes

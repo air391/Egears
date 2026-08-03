@@ -24,10 +24,10 @@
 /vis/scene/endOfEventAction accumulate 10
 /run/beamOn 10
 
-/vis/open HepRepFile
-/vis/drawVolume
-/vis/scene/add/axes
-/vis/scene/add/trajectories
+#/vis/open HepRepFile
+#/vis/drawVolume
+#/vis/scene/add/axes
+#/vis/scene/add/trajectories
 
 # turn on detailed information about tracking
 /tracking/verbose 2

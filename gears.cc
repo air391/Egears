@@ -706,7 +706,7 @@ public:
   StackingAction()
       : G4UserStackingAction(), G4UImessenger(), fT0(0), fTimeWindow(0),
         fCmdT(0) {
-    fCmdT = new G4UIcmdWithADoubleAndUnit("/grdm/setTimeWindow", this);
+    fCmdT = new G4UIcmdWithADoubleAndUnit("/process/had/rdm/setTimeWindow", this);
     fCmdT->SetGuidance("Time window to split a radioactive decay chain.");
     fCmdT->SetGuidance("If a daughter nucleus appears after the window,");
     fCmdT->SetGuidance("it is saved in a new entry in the output ntuple.");
@@ -714,7 +714,7 @@ public:
     fCmdT->SetParameterName("time window", false, true);
     fCmdT->SetDefaultUnit("s");
     fCmdT->AvailableForStates(G4State_PreInit, G4State_Idle);
-  } ///< created macro /grdm/setTimeWindow
+  } ///< created macro /process/had/rdm/setTimeWindow
   ~StackingAction() { delete fCmdT; }
   G4ClassificationOfNewTrack ClassifyNewTrack(const G4Track *trk) {
     if (fTimeWindow <= 0)
