@@ -1,9 +1,0 @@
-// default unit for length is mm
-:volu world BOX 31 11 11 G4_Galactic
-:vis world OFF
-
-:volu air BOX 30 10 10 G4_AIR
-:color air 0.5 0.5 0.5
-
-:rotm r000 0 0 0
-:place air 1 world r000 0 0 0

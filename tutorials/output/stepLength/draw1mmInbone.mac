@@ -1,4 +1,0 @@
-/control/execute checkOverlap.mac
-/control/execute p250MeV.mac
-/tracking/setStepLimit bone 1
-/control/execute vis.mac

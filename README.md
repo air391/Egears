@@ -10,93 +10,65 @@ Configured entirely via macro commands — no recompilation for geometry, physic
 Requires [Nix](https://nixos.org/download/):
 
 ```sh
-git clone <repo-url> && cd rG4-gears
+git clone git@github.com:air391/Egears.git && cd Egears
 nix develop
-cmake -B gears/build -S gears && cmake --build gears/build
-gears gears/tutorials/output/radiate.mac
+./example/run.sh                           # default run
+./example/run.sh --help                    # see all options
+```
+
+## Example
+
+One example, multiple modes — see [example/](example):
+
+```sh
+./example/run.sh                           # .tg geometry, event mode, 50k events
+./example/run.sh --mode step               # step mode (29 columns)
+./example/run.sh --geometry gdml           # GDML geometry
+./example/run.sh --vis                     # Qt visualization
+./example/run.sh --parallel 8              # 8 parallel jobs
 ```
 
 ## Features
 
 ### Output modes
 
-Two modes, switchable via macro:
-
 ```
 /output/mode event   # 6 columns: n, m, pdg0, k0, etotal, et
 /output/mode step    # 29 columns: full step-point data + event summary
 ```
 
-New event-level fields: `pdg0` (source particle PDG), `k0` (source kinetic energy), `etotal` (total energy deposit).
-
-Step limit is configurable (`/output/maxSteps N`); overflow tags the event without killing the track.
-
 ### Sensitive volumes
 
-Mark volumes via macro (replaces the old `(S)` naming convention):
-
 ```
-/sensitive/add HPGe
-/sensitive/add chamber
+/sensitive/add crystal
 ```
 
 ### Geometry
 
-- [Text geometry description](tutorials/detector) (`.tg`) — recommended
-- [GDML](tutorials/detector/GDML) import/export — for CAD toolchains
-- [Boolean operations](tutorials/detector/boolean), [shell scripts](tutorials/detector/scripts)
-- [Syntax highlighting](tutorials/detector/syntax) for Emacs, Vim, Sublime Text
+- Text geometry (`.tg`) — recommended
+- GDML import/export — for CAD toolchains
 
 ### Physics
 
-Switch physics lists without recompilation via `PHYSLIST` environment variable or `/physics_lists/select`:
+Switch physics lists without recompilation:
 
 ```sh
-PHYSLIST=FTFP_BERT_EMZ gears macro.mac
+PHYSLIST=FTFP_BERT_EMZ ./example/run.sh
 ```
-
-Tutorials for [alpha](tutorials/physics/alpha), [beta](tutorials/physics/beta), [gamma](tutorials/physics/gamma), [muon](tutorials/physics/muon), [neutron](tutorials/physics/neutron), [X-ray](tutorials/physics/X-ray).
 
 ### Sources
 
-[GPS](tutorials/sources) (General Particle Source) — fully macro-driven:
-energy spectra, angular distributions, spatial distributions, multi-source stacking.
+GPS (General Particle Source) — fully macro-driven:
+energy spectra, angular distributions, spatial distributions.
 
 ### Scoring
 
-Geant4 built-in mesh scoring (`/score/` commands) for energy deposition, flux, dose in 3D grids:
+Geant4 built-in mesh scoring (`/score/` commands).
 
-```
-/score/create/boxMesh mesh
-/score/mesh/boxSize 100 100 140 mm
-/score/mesh/nBin 10 10 14
-/score/quantity/energyDeposit eDep
-/score/close
-/run/beamOn 10000
-/score/dumpQuantityToFile mesh eDep output.csv
-```
+### Visualization
 
-### Analysis
-
-Output is [ROOT](https://root.cern.ch) TTree format (no ROOT installation required).
-Analyze with [uproot](https://pypi.org/project/uproot/) (Python) or ROOT:
-
-```python
-import uproot
-t = uproot.open("gears.root")["t"]
-print(t.keys())  # branch names
-```
-
-## Tutorials
-
-See [tutorials/](tutorials) for comprehensive demos:
-
-```sh
-gears tutorials/output/demo_event.mac   # event mode
-gears tutorials/output/demo_step.mac    # step mode
-gears tutorials/output/demo_score.mac   # mesh scoring
-gears tutorials/output/radiate.mac      # classic demo
-```
+Qt-based: `OGLSQt`, `OGLIQt`, `TSGQt`, `TSGQT_ZB`, `RayTracerQt`.
+X11-based: `OGLIX`, `OGLSX`, `TSG_X11_GLES`, `TSG_X11_ZB`.
 
 ## Environment
 
@@ -104,12 +76,11 @@ Provided by `flake.nix`:
 
 | Component | Version | Purpose |
 |-----------|---------|---------|
-| Geant4 | 11.4.2 | Transport engine + all 15 data datasets |
+| Geant4 | 11.4.2 | Transport engine + all 15 data datasets + Qt |
 | ROOT | 6.40.00 | PyROOT for analysis |
 | Python | 3.14.7 | PyROOT + uproot/matplotlib (via uv) |
 | cmake | — | Build system |
 | GDML | enabled | Geometry import/export (xercesc) |
-| ScoringManager | enabled | `/score/` mesh commands |
 
 Python dependencies managed by uv (`pyproject.toml`): uproot, matplotlib, numpy.
 
