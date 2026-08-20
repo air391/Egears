@@ -1,0 +1,10 @@
+# GEARS demo: three independent simulations
+# Run each one separately:
+#
+#   gears demo_event.mac   — event mode (6 columns)
+#   gears demo_step.mac    — step mode (29 columns)
+#   gears demo_score.mac   — mesh scoring (/score/ commands)
+#
+# Each produces its own output file.
+# They cannot be combined in one session because
+# /output/mode and /geometry/source require PreInit state.

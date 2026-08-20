@@ -1,0 +1,23 @@
+# Demo 3: Scoring mesh — Geant4 built-in /score/ commands (independent of gears ntuple)
+/control/verbose 0
+/geometry/source detector.tg
+/sensitive/add HPGe
+/run/initialize
+/gps/particle gamma
+/gps/energy 2.6 MeV
+/gps/ang/type iso
+/gps/ang/minphi 180 deg
+/gps/ang/maxphi 270 deg
+/gps/ang/mintheta 40 deg
+/gps/ang/maxtheta 150 deg
+/vis/disable
+/tracking/verbose 0
+/run/verbose 2
+/score/create/boxMesh mesh
+/score/mesh/boxSize 100 100 140 mm
+/score/mesh/nBin 10 10 14
+/score/quantity/energyDeposit eDep
+/score/close
+/run/printProgress 5000
+/run/beamOn 10000
+/score/dumpQuantityToFile mesh eDep demo_score.csv

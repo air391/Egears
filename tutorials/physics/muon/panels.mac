@@ -1,5 +1,6 @@
 /control/verbose 2
 /geometry/source panels.tg
+/sensitive/add panel
 
 /control/ifInteractive gui.mac
 /run/initialize

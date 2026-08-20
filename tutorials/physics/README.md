@@ -4,8 +4,6 @@
 [![gamma](https://img.shields.io/badge/gamma-interactions-cyan?style=flat)](gamma)
 [![muon](https://img.shields.io/badge/muon-interactions-pink?style=flat)](muon)
 [![neutron](https://img.shields.io/badge/neutron-interactions-brown?style=flat)](neutron)
-[![optical](https://img.shields.io/badge/optical-photons-magenta?style=flat)](#optical-processes)
-[![decay](https://img.shields.io/badge/radioactive-decay-orange?style=flat)](#radioactive-decay)
 [![X-ray](https://img.shields.io/badge/X--ray-creation-green?style=flat)](X-ray)
 
 ## Terminology
@@ -29,87 +27,46 @@
 
 ```sh
 $ PHYSLIST=FTFP_BERT_EMZ gears
-
-**************************************************************
- Geant4 version Name: geant4-11-03 [MT]   (6-December-2024)
-                       Copyright : Geant4 Collaboration
-                      References : NIM A 506 (2003), 250-303
-                                 : IEEE-TNS 53 (2006), 270-278
-                                 : NIM A 835 (2016), 186-225
-                             WWW : http://geant4.org/
-**************************************************************
-
-G4PhysListFactory::GetReferencePhysList <FTFP_BERT_EMZ>  EMoption= 4
-<<< Geant4 Physics List simulation engine: FTFP_BERT
-...
-PreInit> /run/initialize
-Idle> /run/beamOn
 ```
 
-where `/run/initialize` initializes physics based on the list, and `/run/beamOn` dumps the list on screen.
-
-Available reference lists can be found in [G4PhysListFactory.cc][factory]. The naming scheme is introduced on page 24 in this [tutorial][]. A guidance on how to choose a proper physics list is also available in the [tutorial][].
+Available reference lists can be found in [G4PhysListFactory.cc][factory]. A guidance on how to choose a proper physics list is available in this [tutorial][].
 
 [GEARS]: http://physino.xyz/gears
 [tutorial]: https://www.slac.stanford.edu/xorg/geant4/SLACTutorial14/Physics1.pdf
 
 ## Physics processes
 
-[Major categories of processes](http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/ForApplicationDeveloper/html/TrackingAndPhysics/physicsProcess.html) provided in [Geant4][] include:
+Major categories of processes provided in [Geant4][]:
 
-- Electromagnitism (EM)
+- Electromagnetism (EM)
   - Standard processes (~1 keV to ~PeV)
   - Low energy processes (250 eV to ~PeV)
-  - [Optical photon tracking](#optical-processes)
 - Weak interaction
   - decay of subatomic particles
-  - [radioactive decay of nuclei](radioactive-decay)
+  - radioactive decay of nuclei
 - Hadronic physics
   - pure strong interaction (0 to ~TeV)
   - electro- and gamma-nuclear (10 MeV to ~TeV)
 - Parameterized physics (not from first principles) for fast simulation
 - Transportation (change from one volume to another)
 
-A unique [process id](../output#process-id) is assigned to each process in a [GEARS][] [output](../output#process-id).
-
-Run `/process/list` after `/run/initialize`, you will get something like this:
-
-```
-     Transportation,              Decay,   RadioactiveDecay,                msc
-              hIoni,            ionIoni,             hBrems,          hPairProd
-        CoulombScat,              eIoni,              eBrem,            annihil
-               phot,              compt,               conv,             muIoni
-            muBrems,         muPairProd,         hadElastic,   neutronInelastic
-           nCapture,           nFission,    protonInelastic,       pi+Inelastic
-       pi-Inelastic,     kaon+Inelastic,     kaon-Inelastic,    kaon0LInelastic
-    kaon0SInelastic,    lambdaInelastic,anti-lambdaInelastic,   sigma-Inelastic
-anti_sigma-Inelastic,    sigma+Inelastic,anti_sigma+Inelastic,     xi-Inelastic
-  anti_xi-Inelastic,       xi0Inelastic,  anti_xi0Inelastic,    omega-Inelastic
-anti_omega-Inelastic,anti_protonInelastic,anti_neutronInelastic,anti_deuteronInelastic
-anti_tritonInelastic,  anti_He3Inelastic,anti_alphaInelastic
-```
-
-Now you can use, for example, `/process/inactivate nCapture` to disable neutron capture process in your simulation. And you can use, for example, `/process/setVerbose 20 RadioactiveDecay` to change the verbosity of the radioactive decay process.
+Run `/process/list` after `/run/initialize` to see all active processes.
 
 ### Radioactive decay
 
-[![YouTube](https://img.shields.io/badge/You-Tube-red?style=flat)](https://youtu.be/8dR0DQ5ypCw)
-
-Radioactive decay processes can be enabled before `run/initialize`:
+Radioactive decay processes can be enabled before `/run/initialize`:
 
 ```sh
 PreInit> /physics_lists/factory/addRadioactiveDecay
 PreInit> /run/initialize
-Idle> /process/list Decay
-   Decay    RadioactiveDecay
 ```
 
-Detailed control of radioactive decay is provided by the [/process/had/rdm][] command, for example,
+Detailed control of radioactive decay is provided by the [/process/had/rdm][] command:
 
 ```sh
-/process/had/rdm/deselectVolume chamber # disabled radioactive decay in volume "chamber"
-/process/had/rdm/nucleusLimits 1 80 # enabled radioactive decay only when z in [1, 80]
-/process/had/rdm/thresholdForVeryLongDecayTime 1e60 year # set it to a large number for long lived isotope to decay
+/process/had/rdm/deselectVolume chamber
+/process/had/rdm/nucleusLimits 1 80
+/process/had/rdm/thresholdForVeryLongDecayTime 1e60 year
 ```
 
 The last command is needed for Geant4 versions >=11.2, where its default value is set to 1 year. Any isotope whose lifetime is longer than 1 year will not decay without setting this to a very long time. This is documented in Geant4 [Physics List Guide].
@@ -117,162 +74,25 @@ The last command is needed for Geant4 versions >=11.2, where its default value i
 [/process/had/rdm]: https://github.com/Geant4/geant4/blob/master/source/processes/hadronic/models/radioactive_decay/src/G4RadioactiveDecayMessenger.cc
 [Physics List Guide]: https://geant4.web.cern.ch/documentation/dev/plg_html/PhysicsListGuide/hadronic/ui-commands.html
 
-Here is an example to create [Pb210][] on the surface of a cylindrical CsI detector:
+Example: create Pb210 on the surface of a cylindrical CsI detector:
 
 ```sh
- /gps/particle ion
- /gps/ion 82 210
- # default energy is 1 MeV, must be set to zero to let it decay at rest
- /gps/energy 0
+/gps/particle ion
+/gps/ion 82 210
+/gps/energy 0
 
- /gps/pos/type Surface
- /gps/pos/shape Cylinder
- /gps/pos/radius 7 cm
- /gps/pos/halfz 2.5 cm
+/gps/pos/type Surface
+/gps/pos/shape Cylinder
+/gps/pos/radius 7 cm
+/gps/pos/halfz 2.5 cm
 ```
-
-[Pb210]: https://storage.googleapis.com/groundai-web-prod/media%2Fusers%2Fuser_92756%2Fproject_309275%2Fimages%2F210Pbdecaychain.png
-
-#### Split decay chain
-
-Some [isotope][]s in a radioactive [decay chain][] have long [half live][]s. They decay long after the first decay on top of the chain. However, [Geant4][] simulate the whole chain in one event. It is the user's task to split different decays in the chain to different events based on the times when they happen.
-
-[isotope]: https://en.wikipedia.org/wiki/Isotope
-[decay chain]: https://en.wikipedia.org/wiki/Decay_chain
-[half live]: https://en.wikipedia.org/wiki/Half-life
-
-[GEARS][] provides a macro command `/process/had/rdm/setTimeWindow` for you to split the chain based on a time window specified by you:
-
-```sh
-PHYSLIST=QGSP_BERT_EMV gears
- # cmd below becomes available only when the cmd above is used
- /physics_lists/factory/addRadioactiveDecay
- # must be run after the commands above
- /run/initialize
-
- # If a decay that happens 1 second after its previous one,
- # it is saved to another event in the output n-tuple
- # The command can be run before or after /run/initialize,
- # but only becomes available after radioactive decay is enabled
- /process/had/rdm/setTimeWindow 1 s
-
- # a time window <= 0 will disable splitting:
- # /process/had/rdm/setTimeWindow 0
- # show detailed instruction of this command:
- help /process/had/rdm/setTimeWindow
-
- # turn on tracking and event verbose
- # to understand Geant4 tracking and stacking processes
- /tracking/verbose 2
- /event/verbose 2
- # record output to check the splitting result
- /analysis/setFileName output
- # simulate just one or a few events to check result
- /run/beamOn 1
-```
-
-Example macro and detector definition files can be found in [GEARS][][/tutorials/physics/decay](decay) folder. The following is an example analysis code to show the recorded events in ROOT:
-
-```cpp
-root [] t->Scan("pdg:trk:pid:stp:dt/1e9:t/1e9","","colsize=10 precision=10")
-```
-
-For people who want to understand how this is done, please check the [GEARS doxygen page of StakingAction](https://codedocs.xyz/jintonic/gears/classStackingAction.html) and the following [Geant4][] help pages:
-
-- <http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/ForApplicationDeveloper/html/Fundamentals/event.html#stacking-mechanism>
-- <http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/ForApplicationDeveloper/html/UserActions/optionalActions.html?highlight=stack#g4userstackingaction>
-
-For the impatient, new particles created after the specified time window in a decay process will be tagged as `fWaiting` in `G4UserStackingAction::ClassifyNewTrack()`. This postpones the tracking of them after the call of `G4UserStackingAction::NewStage()`. One can then save and reset the current event in the `NewStage()` function so that the postponed tracks will be saved in a separate event.
 
 #### Stop decay chain
 
-If the half life of a daughter nucleus is longer than a measurement duration, there is no need to simulate its decay anymore. In this case, instead of splitting its decay to another event, we should simply stop its radioactive decay completely. This is done using a Geant4 macro command `/process/had/rdm/nucleusLimits`, for example,
+If the half life of a daughter nucleus is longer than a measurement duration, stop its radioactive decay completely:
 
 ```sh
-PHYSLIST=QGSP_BERT gears
-/physics_lists/factory/addRadioactiveDecay
-
-/run/initialize
-
-# start with the alpha decay of Am-241
-/gps/particle ion
-/gps/ion 95 241
-/gps/energy 0
-# since Np-237, the daughter of Am-241, is not in the following range,
-# it will not alpha-decay into its daughter nucleus in this simulation.
-# The simulation will stop when Np-237 decays into its ground state.
 /process/had/rdm/nucleusLimits 241 241 95 95
 ```
 
-### Optical processes
-
-[![YouTube](https://img.shields.io/badge/You-Tube-red?style=flat)](https://youtu.be/sgo-RPbDRcU)
-
-Optical processes can be enabled before `/run/initialize`:
-
-```sh
- /physics_lists/factory/addOptical
- /run/initialize
-
- /process/list Electromagnetic
-   phot,              compt,               conv,                msc
-   eIoni,              eBrem,        CoulombScat,            annihil
-   muIoni,            muBrems,         muPairProd,              hIoni
-   hBrems,          hPairProd,            ionIoni,              hIoni
-   ...
-   hIoni,           hIoni,               Cerenkov,       Scintillation
-
- /process/list Optical
-   OpAbsorption,   OpRayleigh,            OpMieHG,         OpBoundary
-   OpWLS
-```
-
-Individual optical processes can be toggled by the following commands:
-
-```sh
-/process/optical/processActivation Cerenkov true/false
-/process/optical/processActivation Scintillation true/false
-/process/optical/processActivation OpAbsorption true/false
-/process/optical/processActivation OpRayleigh true/false
-/process/optical/processActivation OpMieHG true/false
-/process/optical/processActivation OpBoundary true/false
-/process/optical/processActivation OpWLS true/false
-```
-
-More built-in commands related to optical processes can be found [here](http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/ForApplicationDeveloper/html/Control/AllResources/Control/UIcommands/_process_optical_.html). Example usages can be found [here](http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/ForApplicationDeveloper/html/Examples/ExtendedCodes.html#optical-photons).
-
-It is useful to categorize the processes the following way:
-
-- Production of [optical photons][]:
-  - [Cerenkov radiation](https://en.wikipedia.org/wiki/Cherenkov_radiation)
-  - [Scintillaiton](<https://en.wikipedia.org/wiki/Scintillation_(physics)>)
-- Transportation of [optical photons][] inside certain material:
-  - Absorption (OpAbsorption)
-  - Scattering: [Rayleigh scattering](https://en.wikipedia.org/wiki/Rayleigh_scattering) (OpRayleigh), and [Mie scattering](https://en.wikipedia.org/wiki/Mie_scattering) (OpMieHG), etc.
-  - Wavelength shifting (OpWLS)
-- Transportation of [optical photons][] on the boundary of two materials:
-  - Reflection, refraction and transmission (OpBoundary)
-
-It is also important to understand that [optical photons][] are treated differently from gamma and x-rays in [Geant4][], since completely different physics processes are assigned to them.
-
-#### Optical properties of materials and surfaces
-
-To [generate Cerenkov light](http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/ForApplicationDeveloper/html/TrackingAndPhysics/physicsProcess.html#generation-of-photons-in-processes-electromagnetic-xrays-cerenkov-effect), one MUST specify the refractive index of the material where the light is generated. In [GEARS][], this is [done in the detector geometry description file](../detector/optical).
-
-At least two parameters need to be specified to [generate scintillation light](https://geant4-userdoc.web.cern.ch/UsersGuides/ForApplicationDeveloper/html/TrackingAndPhysics/physicsProcess.html#scintillation): the light yield, i.e., the number of photons per unit energy deposition (SCINTILLATIONYIELD), and the variation of the number of generated photons (RESOLUTIONSCALE). The parameters need to be attached to the material that scintillates, they are hence [specified in the detector geometry description file](../detector/optical) as well.
-
-The parameter, RAYLEIGH and ABSLENGTH, related to the transportation of [optical photons][] in a mertial also have to be [attached to the material](../detector/optical).
-
-In an ideal optical interface, the transportation of [optical photons][] can be calculated [given the refractive indices of the matierials](../detector/optical) on both sides. To simulate more complicated interfaces, please see [here](../detector/optical#define-optical-properties-of-a-surface).
-
-#### Example macros
-
-- [CsI3inWLS.tg](../detector/optical/CsI3inWLS.tg): it models a cylindrical [CsI][] crystal with a diameter of about 3 inches. It is wrapped in Teflon tape (painted with [TPB][]) on the side surface and coupled to two [PMT SiO2 windows][PMT] on its end surfaces.
-- [CerenkovInPMTwindow.mac](../detector/optical/CerenkovInPMTwindow.mac): an electron is shot to a PMT window from the vacuum side, generating Cereknov light in the PMT silica window.
-- [ScintillationInCsI.mac](../detector/optical/ScintillationInCsI.mac): a 6 keV gamma is emitted in the center of the CsI crystal generating scintillaiton light in the crystal.
-- [groundFrontPainted.mac](../detector/optical/surface/groundFrontPainted.mac) and [CsI2Teflon.tg](../detector/optical/surface/CsI2Teflon.tg): optical photons shot to an unpolished surface between a CsI crystal and PTFE reflector without an air gap in between.
-
-[optical photons]: http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/ForApplicationDeveloper/html/TrackingAndPhysics/physicsProcess.html#optical-photon-processes
-[CsI]: ../detector/optical/CsI.tg
-[TPB]: ../detector/optical/TPB.tg
-[PMT]: ../detector/optical/SiO2.tg
+This enables radioactive decay only for Z=95, A=241 (Am-241). Daughter nuclei outside this range will not decay.

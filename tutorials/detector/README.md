@@ -3,7 +3,6 @@
 [![visualization](https://img.shields.io/badge/detector-visualization-orange?style=flat)](visualization)
 [![boolen](https://img.shields.io/badge/boolean-operation-yellow?style=flat)](boolean)
 [![scripts](https://img.shields.io/badge/program-geometry-blue?style=flat)](scripts)
-[![optical](https://img.shields.io/badge/optical-properties-cyan?style=flat)](optical)
 [![syntax](https://img.shields.io/badge/syntax-highlighting-magenta?style=flat)](syntax)
 
 ## Detector construction
@@ -61,7 +60,14 @@ You can find a concrete example in [tutorials/detector/GDML](GDML).
 
 #### Sensitive volume
 
-Total energy deposited in a sensitive volume is recorded in an array in a [GEARS][] [output](../output#total-energy) file. You can turn any volume to a sensitive one by simply adding the string "(S)" at the end of its name. The copy number of the volume is used as the array index to retrieve the total energy deposited in that volume. Note that hits in any volume that has a copy number less than 1 won't be recorded. Consequently, the copy number of a sensitive volume must be larger than 0. If there are multiple sensitive volumes, their copy numbers do not have to be continuous. 
+Before `/run/initialize`, mark which logical volumes should be recorded using the macro command:
+
+```
+/sensitive/add HPGe
+/sensitive/add chamber
+```
+
+Only steps inside sensitive volumes are recorded. The copy number of the volume is used as the array index to retrieve the total energy deposited in that volume. The copy number must be greater than 0.
 
 ### Material
 

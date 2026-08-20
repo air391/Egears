@@ -1,390 +1,157 @@
-[![YouTube](https://img.shields.io/badge/You-Tube-blue?style=flat)](https://youtu.be/CEniIMd67X8)
-[![Python](https://img.shields.io/badge/Python-analysis-green?style=flat)](#python)
-[![Step point](https://img.shields.io/badge/step-point-red?style=flat)](#step-point)
-[![Detected energy](https://img.shields.io/badge/total-energy-magenta?style=flat)](#total-energy)
-[![Data analysis](https://img.shields.io/badge/data-analysis-orange?style=flat)](#data-analysis)
-[![Detector hits](https://img.shields.io/badge/detector-hits-blue?style=flat)](#combine-step-points-to-hits-in-detector)
-
 ## Output
 
-Generally speaking, the [visualization](../detector/#detector-visualization) of [detector](../detector) [geometry](../detector/#detector-construction) and the [screen dump](#screen-dump) of a [Geant4][] application can be all regarded as output of a [Geant4][] simulation. Strictly speaking, the output of a [Geant4][] simulation includes [histograms][] and/or [ntuples][] of [data][] generated during the simulation, which can be used to reveal statistical distributions of, for example, positions and energy depositions of interactions.
+GEARS provides two output modes, selectable via macro command:
 
-[GEARS][] utilizes [Geant4 analysis managers](http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/ForApplicationDeveloper/html/Analysis/managers.html) to provide four output formats: [ROOT][], [HDF5][], CSV, and [AIDA][] XML.
+```
+/output/mode event   # event-level summary (6 columns, default)
+/output/mode step    # full step-point data (29 columns)
+```
 
-The output file name can be chosen using the macro command:
+The output file name is set with:
 
 ```
 /analysis/setFileName gears.root
 ```
 
-One of the following suffix is needed to specify the output file format: `.root`, `.hdf5`, `.csv`, `.xml`. Note that the **output is disabled by default**. It will be enabled if the output file name is not empty. So this macro command also works as a switch. Without it, no output file will be created.
+Output is disabled by default — it is enabled only when the file name is not empty.
 
-[Geant4]: http://geant4.cern.ch
-[histograms]: https://www.khanacademy.org/math/ap-statistics/quantitative-data-ap/histograms-stem-leaf/v/histograms-intro
-[ntuples]: https://en.wikipedia.org/wiki/Tuple
-[data]: #step-point
-[ROOT]: https://root.cern.ch
-[HDF5]: https://www.hdfgroup.org/downloads/hdf5/
-[AIDA]: http://aida.freehep.org/index.thtml
-[GEARS]: http://physino.xyz/gears
+### Sensitive volumes
 
-### Screen dump
+Before `/run/initialize`, mark which logical volumes should be recorded:
 
-[Geant4][] can print out on screen detailed information of a simulation if you increase the verbose level of tracking using the macro command [/tracking/verbose](http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/ForApplicationDeveloper/html/Control/AllResources/Control/UIcommands/_tracking_.html), for example,
-
-```sh
- # turn on detailed information about tracking
- /tracking/verbose 2
- # run a few events for debugging
- /run/beamOn 10
- # turn off screen dump for fast simulation
- /tracking/verbose 0
- # run a lot of events
- /run/beamOn 100000
+```
+/sensitive/add HPGe
+/sensitive/add chamber
 ```
 
-You can re-direct the screen dump to a file for detailed examination:
+Only steps inside sensitive volumes are recorded. Volumes not marked as sensitive are ignored.
 
-```sh
-$ gears macro.mac | tee log
-$ less log
+### Event mode (default)
+
+Each entry in the ROOT tree corresponds to one simulated event. Columns:
+
+| Branch | Type | Description |
+|--------|------|-------------|
+| `n` | int | Number of step points recorded in this event |
+| `m` | int | Highest copy number among sensitive volumes |
+| `pdg0` | int | PDG encoding of the source particle |
+| `k0` | double | Kinetic energy of the source particle [keV] |
+| `etotal` | double | Total energy deposited in all sensitive volumes [keV] |
+| `et` | vector\<double\> | Energy deposited per sensitive volume (indexed by copy number) |
+
+### Step mode
+
+Each entry contains the full step-point data from the event, plus the same event-level fields as event mode. The 29 branches are:
+
+- Event-level: `n`, `m`, `pdg0`, `k0`, `etotal`
+- Step-level vectors: `trk`, `stp`, `vlm`, `pro`, `pdg`, `pid`, `xx`, `yy`, `zz`, `dt`, `de`, `dl`, `l`, `x`, `y`, `z`, `t`, `k`, `p`, `px`, `py`, `pz`, `q`, `et`
+
+### Step limit
+
+In step mode, the maximum number of recorded step points per event can be set with:
+
 ```
+/output/maxSteps 50000
+```
+
+Default is 10000. When the limit is reached, recording stops but physics continues — the event is tagged (not killed). This ensures event-level results remain correct.
 
 ### ROOT
 
-The [ROOT][] version of [ntuples][] is [TTree][], which is commonly called a **tree**. Simply put, a tree is a table. Each row is called an entry (or an event) and each column is called a branch (of course, we are dealing with a tree after all). If you simulate 1000 events using [GEARS][], your [ROOT][] tree would have 1000 entries. If you save the first interaction position `x`, `y`, and `z` in the tree, your tree would have 3 branches, each holds 1000 values of `x`, `y`, or `z`. If an event has more than just one hit, you will have a few `x`, `y`, and `z`'s for each event (row), and your table would have one more dimension, labeled as `Iteration$` in [TTree][], the depth of which may change event by event since each event may have a different number of hits.
-
-The [ROOT][] [TTree][] offers the following features that are desired for analyzing data generated by [GEARS][]:
-
-- It is designed to work with large data sets. For example, it can deal with Terra Bytes of data easily. It does so by loading individual branches separately to a PC memory for analysis, which requires relatively small memory compared to loading the whole table as many other analysis tools do.
-- It compresses data to save disk space.
-- It provide [functions][] to create and analyze statistical distributions of data using multiple dimensional [histograms][].
+The [ROOT][] version of ntuples is [TTree][]. Each row is an entry (event), each column is a branch. If you simulate 1000 events, the tree has 1000 entries. In event mode, each entry has 6 branches. In step mode, each entry has 29 branches, and vectors may contain multiple values per event (one per step point), creating a jagged array.
 
 [TTree]: https://root.cern.ch/doc/master/classTTree.html
-[functions]: https://root.cern.ch/doc/master/classTTree.html#a8a2b55624f48451d7ab0fc3c70bfe8d7
 
-Here are some example codes that can be run in a ROOT interactive session to generate histograms:
+Example ROOT session:
 
 ```sh
-$ root gears.root # open the output file in root format using ROOT
-root [] .ls
-TFile**         gears.root
- TFile*         gears.root
-   KEY: TTree    t;1     Geant4 step points
+$ root gears.root
 root [] t->GetEntries()
-(long long) 5000
+(long long) 50000
 root [] t->Show(0)
-======> EVENT:0
- n   = 235
- m   = 2
- trk = (vector<int>*)0x351a520
- stp = (vector<int>*)0x398c7b0
- vlm = (vector<int>*)0x2d4dba0
- pro = (vector<int>*)0x3524f60
- pdg = (vector<int>*)0x34302c0
- pid = (vector<int>*)0x3972e80
- xx  = (vector<double>*)0x3548ce0
- yy  = (vector<double>*)0x2d4ef10
- zz  = (vector<double>*)0x354e600
- dt  = (vector<double>*)0x3549db0
- de  = (vector<double>*)0x34b2d90
- dl  = (vector<double>*)0x2f63630
- l   = (vector<double>*)0x2f636f0
- x   = (vector<double>*)0x2d50760
- y   = (vector<double>*)0x351a450
- z   = (vector<double>*)0x3543f10
- t   = (vector<double>*)0x351eed0
- k   = (vector<double>*)0x3a907c0
- p   = (vector<double>*)0x2f307c0
- q   = (vector<double>*)0x2ae30c0
- et  = (vector<double>*)0x35293f0
-root [] t->Draw("x","k*(pdg==22)")
+====> EVENT:0
+ n      = 4
+ m      = 1
+ pdg0   = 22
+ k0     = 2600
+ etotal = 45.3
+ et     = (vector<double>*)0x...
+root [] t->Draw("etotal")          // energy spectrum
+root [] t->Draw("k0")              // source energy
+root [] t->Draw("pdg0")            // source particle type
+```
+
+In step mode:
+
+```cpp
+root [] t->Draw("x:y", "trk==1","l", 1, 1)   // primary particle tracks
+root [] t->Draw("pro","trk>1 && stp==0")      // processes creating secondaries
+root [] t->Draw("x:y:z", "vlm==1")            // hits in volume 1
+root [] t->Draw("pdg")                         // particle types
+root [] t->Draw("pro", "pdg==22 && stp!=0")    // gamma processes
+root [] t->Draw("de/dl:p")                     // dE/dx vs momentum
+root [] t->Draw("et[1]")                       // energy in volume 1
 ```
 
 ### Python
 
-[ROOT][] is less known than [Python][] outside of the high energy physics community. The good news for people who are not familiar with [ROOT][] is that [GEARS][] does not depend on [ROOT][] to compile or run, even though its output can be saved in [ROOT][] [TTree][] format, and that the analysis of [GEARS][] output can be done in [Python][] instead of [ROOT][] thanks to the [uproot][] [Python][] package. The best way to get started with analyzing [GEARS][] output in Python would be to follow the [uproot][] [tutorial][].
+GEARS output can be analyzed in [Python][] using [uproot][]:
 
-If you are familiar with [ROOT][] and would like to migrate to [Python][] for analyzing [GEARS][] output, you can find here a brief list of [Python][] equivalence of [ROOT][] commands:
+```python
+import uproot, awkward as ak, numpy as np
+import matplotlib.pyplot as plt
 
-- Open file:
-  - [ROOT][]:
-    ```sh
-    $ root gears.root # open gears output in ROOT format
-    ```
-  - [Python][]:
-    ```python
-    $ python
-    >>> import uproot as up
-    >>> file = up.open("gears.root")
-    ```
-- Check file contents:
-  - [ROOT][]:
-    ```sh
-    root[] .ls
-    ```
-  - [Python][]:
-    ```python
-    >>> file.classnames()
-    ```
-    or
-    ```python
-    >>> file.keys()
-    ```
-- List variables in [TTree][] [ntuples][]:
-  - [ROOT][]:
-    ```sh
-    root[] t->Show()
-    ```
-  - [Python][]:
-    ```python
-    >>> t = file['t'] # get TTree object 't' from file
-    >>> t.show() # show variables saved in the tree, t
-    >>> t.keys() # another way to show variables saved in the tree
-    ```
-- Draw the distribution of a variable as a histogram:
-  - [ROOT][]:
-    ```sh
-    root[] t->Draw("x")
-    ```
-  - [Python][]:
-    ```python
-    >>> x=t['x'].array(library='pd')
-    >>> x.plot.hist(bins=100)
-    >>> import matplotlib.pyplot as plot
-    >>> plot.show()
-    ```
-- Draw the distribution of a selected subset of the variable as a histogram:
-  - [ROOT][]:
-    ```sh
-    root[] t->Draw("x", "vlm==1") // draw x coordinate of step points in volume 1
-    ```
-  - [Python][]:
-    ```python
-    >>> import awkward as ak
-    >>> import matplotlib.pyplot as plot
-    >>> x = t.arrays(['x'], "vlm==1") # get all x in vlm 1
-    >>> plot.hist(ak.flatten(x, axis=None), bins=100)
-    >>> plot.show()
-    ```
-    <https://awkward-array.org/doc/main/user-guide/how-to-restructure-flatten.html>
-- Draw a 2D histogram:
-  - [ROOT][]:
-    ```sh
-    root[] t->Draw("y:x") // draw x, y distribution of step points
-    ```
-  - [Python][]:
-    ```python
-    >>> import numpy as np
-    >>> import awkward as ak
-    >>> import matplotlib.pyplot as plot
-    >>> x = np.asarray(ak.flatten(t['x'].array()))
-    >>> y = np.asarray(ak.flatten(t['y'].array()))
-    >>> plot.hist2d(x,y,bins=100)
-    ```
-    <https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.hist2d.html><br/>
-    <https://numpy.org/doc/stable/reference/generated/numpy.asarray.html>
+f = uproot.open("gears.root")
+t = f["t"]
+
+# event mode: energy spectrum
+etotal = t["etotal"].array(library="np")
+plt.hist(etotal[etotal > 0], bins=100)
+plt.xlabel("Total energy deposited [keV]")
+plt.show()
+
+# step mode: particle positions
+x = np.asarray(ak.flatten(t["x"].array()))
+y = np.asarray(ak.flatten(t["y"].array()))
+plt.hist2d(x, y, bins=100)
+plt.show()
+```
 
 [Python]: https://www.python.org/
 [uproot]: https://pypi.org/project/uproot/
-[tutorial]: https://uproot.readthedocs.io/en/latest/basic.html
-
-### Julia
-
-Utilizing <https://github.com/JuliaHEP/UpROOT.jl>, one can load simulation results in [ROOT][] format in [Julia][] as well:
-
-```julia
-julia> import Pkg
-julia> Pkg.add("UpROOT")
-julia> using UpROOT
-julia> file = TFile("gears.root")
-julia> tree = file["t"]
-julia> tree.x
-```
-
-[Julia]: https://julialang.org
-
-## Step point
-
-[Geant4][] tracks a particle step by step as it passes through the [simulated world](../detector) until it goes out of it, gets absorbed in a material, or changes to other particles, as shown in the following figure. A step point is a point in a particle track where the particle is generated or changed.
-
-<img src="tracks.png" style="width:100%" alt="tracks.png">
-
-[Geant4][] artificially adds a step point on the boundary of two volumes when the track goes from one volume into the other, even if there is no change of the particle.
-
-A step point in [GEARS][] contains the following information:
-
-- Track id (`trk` in short)
-- Step number, starting from 0 (`stp` in short)
-- Detector volume copy number (`vlm` in short)
-- [Process id](#process-id) (`pro` in short)
-- [Particle id](#particle-id) (`pdg` in short)
-- Track id of the parent particle (`pid` in short)
-- Local position `xx` [mm] (origin: center of the volume)
-- Local position `yy` [mm] (origin: center of the volume)
-- Local position `zz` [mm] (origin: center of the volume)
-- Local time `dt` [ns] (time elapsed from previous step point)
-- Energy deposited [keV] (`de` in short)
-- Step length [mm] (`dl` in short)
-- Trajectory length [mm] (`l` in short)
-- Global position `x` [mm] (origin: center of the world)
-- Global position `y` [mm] (origin: center of the world)
-- Global position `z` [mm] (origin: center of the world)
-- Global time `t` [ns] (time elapsed from the beginning of event)
-- Kinetic energy of the particle [keV] (`k` in short)
-- Momentum of the particle [keV] (`p` in short)
-- Charges (`q` in short)
-
-They are saved in separated C++ vectors (arrays with various sizes). Such a flat data structure and very short variable names are chosen on purpose to make plotting of those variables in a [ROOT][] interactive session easy.
-
-Notice that the variable `n` is the total number of step points recorded in each event. `m` is the maximal copy number of a [sensitive volume](../detector#sensitive-volume)
+[ROOT]: https://root.cern.ch
 
 ### Process id
 
-The physics process generating each step point is saved in a variable `pro[i]`, where `i` is the index of the step point. It equals to (process type) \* 1000 + (sub type). The Process types are defined in G4ProcessType.hh, sub types are defined in G4HadronicProcessType.hh, G4DecayProcessType.hh, G4EmProcessSubType.hh, G4TransportationProcessType.hh, G4FastSimulationProcessType.hh, G4OpProcessSubType.hh, etc. They can be found in <http://www-geant4.kek.jp/lxr/find?string=Type.hh>.
+The physics process generating each step point is saved in `pro[i]`, equal to (process type) \* 1000 + (sub type). Key values:
 
-- less than 1000: not defined
-- 1000 to 2000: [transportation](https://geant4.kek.jp/lxr/source//processes/transportation/include/G4TransportationProcessType.hh)
-  - 1000: initial step (step 0)
-  - 1091: transportation
-  - 1092: [coupled transportation](https://geant4-forum.web.cern.ch/t/coupledtransportation/2363)
-- 2000 to 3000: [electromagnetic](https://geant4.kek.jp/lxr/source//processes/electromagnetic/utils/include/G4EmProcessSubType.hh)
-  - 2001: Coulomb scattering
-  - 2002: ionization
-  - 2003: Bremsstrahlung
-  - 2004: pair production by charged particles
-  - 2005: annihilation
-  - 2010: multiple scattering
-  - 2011: Rayleigh scattering
-  - 2012: photoelectric effect
-  - 2013: Compton scattering
-  - 2014: gamma conversion (pair production)
-  - 2016: gamma general process, include 2010 to 2014
-  - 2021: Cherenkov
-  - 2022: scintillation
-  - 2023: synchrotron radiation
-- 3000 to 4000: [optical](https://geant4.kek.jp/lxr/source//processes/optical/include/G4OpProcessSubType.hh)
-  - 3031: absorption
-  - 3032: boundary
-  - 3033: Rayleigh scattering
-  - 3034: WLS
-  - 3035: Mie scattering
-  - 3036: WLS2
-- 4000 to 5000: [hadronic](https://geant4.kek.jp/lxr/source//processes/hadronic/management/include/G4HadronicProcessType.hh)
-  - 4111: hadron elastic
-  - 4121: hadron inelastic
-  - 4131: capture
-  - 4132: muon atomic capture
-  - 4141: fission
-  - 4151: hadron decay at rest
-  - 4142: lepton decay at rest
-  - 4161: charge exchange
-  - 4210: radioactive decay
-- 5000 to 6000: photolepton_hadron
-- 6000 to 7000: [decay](https://geant4.kek.jp/lxr/source//processes/decay/include/G4DecayProcessType.hh)
-  - 6201: decay
-  - 6202: decay with spin
-  - 6203: pion decay with spin
-  - 6210: radioactive decay
-- 7000 to 8000: general
-  - 7403: [neutron killer](https://geant4.kek.jp/lxr/source//processes/transportation/include/G4TransportationProcessType.hh)
-- 8000 to 9000: Parameterisation
-- 9000 to 10000: user defined
-- 10000 to 11000: parallel
-- 11000 to 12000: phonon
-- 12000 to 13000: UCN
+- 1000: initial step (step 0)
+- 1092: coupled transportation
+- 2002: ionization
+- 2003: Bremsstrahlung
+- 2010: multiple scattering
+- 2012: photoelectric effect
+- 2013: Compton scattering
+- 2014: gamma conversion
+- 4111: hadron elastic
+- 4121: hadron inelastic
+- 4131: neutron capture
+- 4210: radioactive decay
+- 6210: radioactive decay
 
 ### Particle id
 
-The type of particle related to a step point is saved in a variable `pdg`. It is the same as the [PDG encoding](http://pdg.lbl.gov/current/mc-particle-id) of the particle. A Google search will give more information about it. The name `pid` is used for the parent particle's track id. A complete list of nuclei PDG encoding can be found [here](https://twiki.cern.ch/twiki/pub/Geant4/ExtendingFnalDb/Nuclei.txt).
+`pdg` is the [PDG encoding](http://pdg.lbl.gov/current/mc-particle-id) of the particle. Common values: 22 (gamma), 11 (e-), -11 (e+), 2212 (proton), 2112 (neutron), 13 (mu-), -13 (mu+).
 
-### Record information of step 0
+`pdg0` (event-level) is the PDG encoding of the source particle.
 
-One cannot get access to step 0 (initStep printed on screen if `/tracking/verbose` is set to be more than 0) through [G4UserSteppingAction][], which only provides access to step 1 and afterwards. However, step 0 contains some very important information that is constantly requested by the user. For example, the energy of a gamma ray from a radioactive decay is only available from step 0. Such information can be easily displayed using the following ROOT command with the Output ROOT tree, `t`:
+### Combine step points to hits
 
-```cpp
-  // draw kinetic energy, "k", of a gamma (pdg==22)
-  // created by radioactive decay process (pro==6210)
-  t->Draw("k","pro==6210 && pdg==22")
-```
-
-This is achieved by using [G4SteppingVerbose][] instead of [G4UserSteppingAction][] for data recording. The former provides a function called [TrackingStarted][]() to print verbose information about step 0 on screen if `/tracking/verbose` is set to be more than 0. It also provides a function called [StepInfo][]() to print verbose information about steps after step 0 on screen if `/tracking/verbose` is more than 0. [G4SteppingVerbose][]::[StepInfo][]() is called right before [G4UserSteppingAction][]::[UserSteppingAction][]([G4Step][]_) is called in [G4SteppingManager][]::[Stepping][](), it hence can be used to fully replace the functionality of [G4UserSteppingAction][]::[UserSteppingAction][]([G4Step][]_).
-
-In fact, [G4UserSteppingAction][]::[UserSteppingAction][]([G4Step][]\*) is not used at all in [GEARS][]. The Output class inherits [TrackingStarted][]() and [StepInfo][]() from [G4SteppingVerbose][] to record data from all steps. There is another advantage of using [G4SteppingVerbose][] instead of [G4UserSteppingAction][] for recording, that is, [G4SteppingVerbose][] is provided as a globally available singleton, which can be easily accessed at different places in the codes using:
-
-```cpp
-  G4VSteppingVerbose::GetInstance()
-```
-
-This is used in [G4UserRunAction][] to open and close a TFile, in [G4UserEventAction][] to fill a TTree.
-
-The catch is that functions in [G4SteppingVerbose][] will not be called in [G4SteppingManager][] unless `/tracking/verbose` is set, which will print too much information on screen for a long run. This is solved in EventAction::BeginOfEventAction by turning on tracking verbose all the time so that all functions in [G4SteppingVerbose][] will be called, while at the same time, turning on [G4SteppingVerbose][] local verbose flag [Silent][] to run them in silent mode.
-
-[G4Track]: http://www-geant4.kek.jp/lxr/source/track/include/G4Track.hh
-[G4Step]: http://www-geant4.kek.jp/lxr/source/track/include/G4Step.hh
-[G4UserSteppingAction]: http://www-geant4.kek.jp/lxr/source/tracking/include/G4UserSteppingAction.hh
-[UserSteppingAction]: http://www-geant4.kek.jp/lxr/source/tracking/include/G4UserSteppingAction.hh
-[G4SteppingVerbose]: http://www-geant4.kek.jp/lxr/source/tracking/include/G4SteppingVerbose.hh
-[G4SteppingManager]: http://www-geant4.kek.jp/lxr/source/tracking/include/G4SteppingManager.hh
-[G4UserRunAction]: http://www-geant4.kek.jp/lxr/source/run/include/G4UserRunAction.hh
-[G4UserEventAction]: http://www-geant4.kek.jp/lxr/source/event/include/G4UserEventAction.hh
-[Silent]: http://www-geant4.kek.jp/lxr/source/tracking/src/G4VSteppingVerbose.cc#L50
-[Stepping]: http://www-geant4.kek.jp/lxr/source/tracking/src/G4SteppingManager.cc#L116
-[StepInfo]: http://www-geant4.kek.jp/lxr/source/tracking/src/G4SteppingManager.cc#L228
-[TrackingStarted]: http://www-geant4.kek.jp/lxr/source/tracking/src/G4SteppingManager.cc#L360
-
-## Total energy
-
-In addition to arrays of parameters of individual step points, a [GEARS][] output file also contains an array of the total energies deposited in the [sensitive volumes](../detector#sensitive-volume) of the simulated detector. The index of the array is the same as the copy numbers of those volumes. The name of the array is called `et`. Since the copy number of a [sensitive volume](../detector#sensitive-volume) has to start from 1, `et[0]` is used to store the total energy deposited in all sensitive volumes. You can use the following command to draw the total energy deposited in a sensitive volume with a copy number `1`:
-
-```cpp
-root [] t->Draw("et[1]")
-```
-
-## Data analysis
-
-One can use the following command to generate `gears.root` in [GEARS][]/[tutorials](..)/[output](.)/:
-
-```sh
-$ gears radiate.mac
-```
-
-[radiate.mac](radiate.mac) demonstrates how to use [Geant4][] [macro commands](http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/ForApplicationDeveloper/html/Control/AllResources/Control/UIcommands/_.html) to save [step points](#step-point) and [total energies in sensitive volumes](#total-energy). It uses the [detector geometry](../detector) defined in [detector.tg](detector.tg).
-
-Here are some sample [ROOT][] commands that one can use to generate plots from `gears.root`:
-
-```cpp
-// draw tracks of the primary particle on x-y plane in event 1
-root[] t->Draw("x:y", "trk==1","l", 1, 1)
-// show physics processes creating secondary particles
-root[] t->Draw("pro","trk>1 && stp==0")
-// display hits distribution in volume with copy number 1
-root[] t->Draw("x:y:z", "vlm==1")
-// show how many types of particles are involved in the simulation
-root[] t->Draw("pdg");
-// show physics process related to gamma-rays
-root[] t->Draw("pro", "pdg==22 && stp!=0");
-// show spatial distributions of secondary particles
-root[] t->Draw("x:y", "trk>1")
-// plot dE/dx versus momentum
-root[] t->Draw("de/dl:p")
-// draw energy spectrum recorded by volume (detector) 1
-root[] t->Draw("et[1]")
-```
-
-## Combine step points to hits in detector
-
-Many of the step points in a Geant4 simulation are very close to each other, especially those of charged particles, as they quickly lose energy through multiple scattering or ionizing surrounding atoms in a very small range. The space resolution of a real-life detector is normally not enough to resolve these details. As seen by such a detector, all nearby step points act as a single hit, the energy of which is a sum of deposited energies from all these step points, the position of which is an energy-weighted average of all these step point positions. The modeling of detector response normally start with combined hits instead of the original step points directly from Geant4 to save computational power.
-
-A ROOT script [combineStepPointsToHits.C](combineStepPointsToHits.C), is provided to demonstrate the combining procedure. It takes the output from [GEARS][] and save the combined hits to another ROOT file `hits.root`. Another ROOT script, [drawHits.C](drawHits.C), is used to demonstrate the final result shown in the following plot.
-
-<img src="combinedHits.png" alt="combined hits" style="width:100%">
-
-These ROOT scripts can be directly executed without compilation:
+Many step points are very close together. A ROOT script [combineStepPointsToHits.C](combineStepPointsToHits.C) combines nearby step points into detector hits, saving to `hits.root`. [drawHits.C](drawHits.C) visualizes the result.
 
 ```sh
 $ root -q combineStepPointsToHits.C
 $ root drawHits.C
 ```
 
-Note that they have to be run after you execute `gears radiate.mac`, since they need the Geant4 output as input.
+Run after `gears radiate.mac` to use its output as input.

@@ -2,6 +2,7 @@
 /control/verbose 1
 # geometry must be specified before /run/initialize
 /geometry/source concrete.tg
+/sensitive/add detector
 
 #cmd below is availabe only after the cmd above is used
 #/physics_lists/factory/addRadioactiveDecay

@@ -60,6 +60,7 @@ gxml.cc
 
 # file system
 .nfs*
+.python
 
 # windows
 .vs

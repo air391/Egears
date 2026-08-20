@@ -8,6 +8,7 @@
 /control/verbose 1
 # geometry must be specified before /run/initialize
 /geometry/source CsI.tg
+/sensitive/add air
 
 # initialize geometry and physics
 /run/initialize

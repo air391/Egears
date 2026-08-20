@@ -2,6 +2,8 @@
 
 /geometry/source HPGe.tg
 
+/sensitive/add HPGe
+
 /run/initialize
 
 # load pre-defined source

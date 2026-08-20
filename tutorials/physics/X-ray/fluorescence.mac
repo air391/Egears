@@ -1,4 +1,5 @@
 /geometry/source foil.tg
+/sensitive/add foil
 
 # PIXE must be used to enable the creation of characteristic X-rays
 /process/em/pixe true

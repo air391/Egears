@@ -5,9 +5,9 @@
 :volu concrete BOX 100 50 50 G4_CONCRETE
 :color concrete 0.8 0.8 0.8 
 
-:volu panel(S) BOX 8 50 50 G4_PLASTIC_SC_VINYLTOLUENE
-:color panel(S) 0 0.8 1 
+:volu panel BOX 8 50 50 G4_PLASTIC_SC_VINYLTOLUENE
+:color panel 0 0.8 1 
 
 :rotm r000 0 0 0
 :place concrete -1 air r000   0 0 0
-:place panel(S)  1 air r000 150 0 0
+:place panel  1 air r000 150 0 0

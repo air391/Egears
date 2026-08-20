@@ -2,6 +2,10 @@
 /control/verbose 1
 # geometry must be specified before /run/initialize
 /geometry/source detector.tg
+# mark HPGe as sensitive (required for data recording)
+/sensitive/add HPGe
+# output mode: event (6 columns) or step (29 columns)
+/output/mode event
 # specify a physics list
 #/physics_lists/select QGSP_BERT_EMV
 # initialize geometry and physics
@@ -29,7 +33,7 @@
 # dump a few events on screen for debugging
 /run/beamOn 10
 
-# turn off screen printing for fast simulation 
+# turn off screen printing for fast simulation
 /vis/disable
 /tracking/verbose 0
 # turn on data recording

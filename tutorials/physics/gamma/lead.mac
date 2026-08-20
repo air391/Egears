@@ -1,5 +1,6 @@
 /control/verbose 2
 /geometry/source lead.tg
+/sensitive/add slab
 
 /run/initialize
 

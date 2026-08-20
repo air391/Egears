@@ -2,6 +2,7 @@
 /control/verbose 1
 # geometry must be specified before /run/initialize
 /geometry/source air.tg
+/sensitive/add air
 
 # initialize geometry and physics
 /run/initialize

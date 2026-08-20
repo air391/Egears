@@ -1,4 +1,5 @@
 /geometry/source Gd.tg
+/sensitive/add Gd
 
 /run/initialize
 
