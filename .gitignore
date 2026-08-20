@@ -9,6 +9,8 @@ INSTALL/ROOT/6.*
 _site
 *jekyll*
 *.lock
+!flake.lock
+!uv.lock
 .sass-cache
 
 # visualization files
