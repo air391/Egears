@@ -19,7 +19,7 @@
         system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
-          g4 = pkgs.geant4;
+          g4 = pkgs.geant4.override { enableQt = true; };
           # All Geant4 datasets so physics processes can locate data files.
           # Filter out the non-derivation attrs (override, overrideDerivation).
           g4data = builtins.filter pkgs.lib.isDerivation (builtins.attrValues g4.data);
