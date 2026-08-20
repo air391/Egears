@@ -1,100 +1,118 @@
-> **Note**
-> The latest [GEARS][] require [Geant4.11](https://geant4.web.cern.ch/support/download). If you are still using [Geant4.10](https://geant4.web.cern.ch/support/download_archive?page=1), please download [v1.5.1](https://github.com/jintonic/gears/releases/tag/v1.5.1) of [GEARS][] from the [Release](https://github.com/jintonic/gears/releases) page.
+# GEARS
 
-[![Article](https://img.shields.io/badge/arXiv-2512.09246-orange?style=flat)](https://arxiv.org/abs/2512.09246)
-[![Get GEARS](https://img.shields.io/badge/Get-GEARS-cyan?style=flat)](INSTALL)
-[![Tutorials](https://img.shields.io/badge/Use-GEARS-blue?style=flat)](tutorials)
-[![YouTube](https://img.shields.io/badge/You-Tube-red?style=flat)](https://www.youtube.com/@physino)
-[![Doxygen](https://codedocs.xyz/jintonic/gears.svg)](https://codedocs.xyz/jintonic/gears/annotated.html)
-[![Get Involved](https://img.shields.io/badge/Get-involved-ff69b4?style=flat)](#how-to-contribute)
+GEant4 Example Application with Rich features yet Small footprint.
 
-<a href="http://physino.xyz/gears/tutorials/detector/visualization/gearsX3D.html"><img align="right" width="120px" src="tutorials/detector/visualization/gears.png"/></a>
+Single-file Geant4 application (~570 SLOC) for radiation transport simulation.
+Configured entirely via macro commands — no recompilation for geometry, physics, or source changes.
 
-[GEARS][] is a [Geant4][] [Example][] Application with [Rich features](#features) yet Small footprint. The entire C++ coding is minimized down to a single file with about 520 [SLOC][]. This is achieved mainly by utilizing [Geant4][] plain [text geometry description][tg], [built-in UI commands][TUI] (macros), and C++ inheritance. It is ideal for student training and fast implementation of small to medium-sized experiments.
+## Quick start
 
-[GEARS]: https://github.com/jintonic/gears
-[Geant4]: http://geant4.cern.ch
-[Example]:http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/ForApplicationDeveloper/html/Examples/examples.html
-[tg]: http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/ForApplicationDeveloper/html/Detector/Geometry/geomASCII.html
-[TUI]: http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/ForApplicationDeveloper/html/Control/commands.html
-[SLOC]: https://en.wikipedia.org/wiki/Source_lines_of_code
+Requires [Nix](https://nixos.org/download/):
+
+```sh
+git clone <repo-url> && cd rG4-gears
+nix develop
+cmake -B gears/build -S gears && cmake --build gears/build
+gears gears/tutorials/output/radiate.mac
+```
 
 ## Features
 
-* [Single small C++ file](gears.cc), easy to manage, fast to [compile](INSTALL#compile-gears) (a few second on a regular PC)
-* [Easy switching between well maintained Geant4 reference physics lists without recompilation](tutorials/physics)
-  * [Individual processes can be turned on/off without recompilation](tutorials/physics#physics-processes)
-  * [Fast implementation of optical properties without recompilation](tutorials/physics#optical-properties-of-materials-and-surfaces)
-  * [Optional radioactive decay simulation](tutorials/physics#radioactive-decay) with the possibility to [save the parent and daughter decays into different events if the later happens after a user specified time interval](tutorials/physics#split-decay-chain)
-* [Frequently used source spectra (AmBe, Am-241, etc.)](tutorials/sources#common-sources) in addition to [GPS](tutorials/sources)
-* [Output in multiple data format](tutorials/output)
-  * [ROOT](tutorials/output#root) TTree format (default, no [ROOT][] installation is needed)
-    * Build-in data compression, well suitable for large data processing
-    * Fast access to independent data members
-    * Flat tree (no nested branches or arrays) with short leaf names
-      * Easy to use in [TTree][]::[Draw][]
-      * No need to load extra library to open
-      * Can be easily analyzed in [Python][] through [Uproot][]
-  * [HDF5][], universal data format, easy to read by different tools
-  * CSV or XML, Human readable ASCII file, capable of dealing with multiple dimensional arrays
-* [Record information of step 0](tutorials/output#record-information-of-step-0) (initStep), which is not available through [G4UserSteppingAction][]
-* [simple text][tg] or [GDML][] geometry I/O
-  * [Fast implementation of detector geometry](tutorials/detector) without C++ programming
-  * Create/Change geometry without re-compilation
-  * Turn off data saving in a volume by assigning it a non-positive copy number
-  * Turn any volume to a [sensitive detector](tutorials/detector#sensitive-volume) by adding "(S)" in its name
-  * [Assign optical properties in Geant4 plain text geometry description](tutorials/detector/optical), which is not available in the official [Geant4][] release
-  * [Syntax highlighting of the simple text geometry description files](tutorials/detector/syntax) in [Emacs](tutorials/detector/syntax#emacs), [Vim](tutorials/detector/syntax#vim), [Micro](tutorials/detector/syntax#micro), and [Sublime Text](tutorials/detector/syntax#sublime-text)
-* [Creating 3D mesh to record and visualize physical variables in it without any change of the C++ code](http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/ForApplicationDeveloper/html/Detector/commandScore.html)
-* [Doxygen documentation](https://codedocs.xyz/jintonic/gears/)
-* Many simple [tutorials](tutorials) to demonstrate the usage of [Geant4][]
+### Output modes
 
-[ROOT]: https://root.cern.ch
-[GPS]: http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/ForApplicationDeveloper/html/GettingStarted/generalParticleSource.html
-[TTree]: https://root.cern/manual/trees
-[Draw]: https://root.cern.ch/doc/master/classTTree.html#a73450649dc6e54b5b94516c468523e45
-[Python]: https://www.python.org/
-[Uproot]: https://pypi.org/project/uproot
-[G4UserSteppingAction]:http://www-geant4.kek.jp/lxr/source/tracking/include/G4UserSteppingAction.hh
-[GDML]: https://gdml.web.cern.ch/GDML/
-[HDF5]: https://www.hdfgroup.org/downloads/hdf5/
+Two modes, switchable via macro:
 
-## How to contribute
+```
+/output/mode event   # 6 columns: n, m, pdg0, k0, etotal, et
+/output/mode step    # 29 columns: full step-point data + event summary
+```
 
-Please [fork GEARS on GitHub](https://help.github.com/en/github/getting-started-with-github/fork-a-repo). Run the following to get a local copy of the forked repository and link it to the [original GEARS repository][GEARS]:
+New event-level fields: `pdg0` (source particle PDG), `k0` (source kinetic energy), `etotal` (total energy deposit).
+
+Step limit is configurable (`/output/maxSteps N`); overflow tags the event without killing the track.
+
+### Sensitive volumes
+
+Mark volumes via macro (replaces the old `(S)` naming convention):
+
+```
+/sensitive/add HPGe
+/sensitive/add chamber
+```
+
+### Geometry
+
+- [Text geometry description](tutorials/detector) (`.tg`) — recommended
+- [GDML](tutorials/detector/GDML) import/export — for CAD toolchains
+- [Boolean operations](tutorials/detector/boolean), [shell scripts](tutorials/detector/scripts)
+- [Syntax highlighting](tutorials/detector/syntax) for Emacs, Vim, Sublime Text
+
+### Physics
+
+Switch physics lists without recompilation via `PHYSLIST` environment variable or `/physics_lists/select`:
 
 ```sh
-$ git clone git@github.com:yourGitHubAccount/gears.git # get forked repository
-$ git remote add upstream git@github.com:jintonic/gears.git # link to original repository
-$ git remote -v # run a check
+PHYSLIST=FTFP_BERT_EMZ gears macro.mac
 ```
 
-Run the following to keep your local repository updated with the [original GEARS repository][GEARS]:
+Tutorials for [alpha](tutorials/physics/alpha), [beta](tutorials/physics/beta), [gamma](tutorials/physics/gamma), [muon](tutorials/physics/muon), [neutron](tutorials/physics/neutron), [X-ray](tutorials/physics/X-ray).
+
+### Sources
+
+[GPS](tutorials/sources) (General Particle Source) — fully macro-driven:
+energy spectra, angular distributions, spatial distributions, multi-source stacking.
+
+### Scoring
+
+Geant4 built-in mesh scoring (`/score/` commands) for energy deposition, flux, dose in 3D grids:
+
+```
+/score/create/boxMesh mesh
+/score/mesh/boxSize 100 100 140 mm
+/score/mesh/nBin 10 10 14
+/score/quantity/energyDeposit eDep
+/score/close
+/run/beamOn 10000
+/score/dumpQuantityToFile mesh eDep output.csv
+```
+
+### Analysis
+
+Output is [ROOT](https://root.cern.ch) TTree format (no ROOT installation required).
+Analyze with [uproot](https://pypi.org/project/uproot/) (Python) or ROOT:
+
+```python
+import uproot
+t = uproot.open("gears.root")["t"]
+print(t.keys())  # branch names
+```
+
+## Tutorials
+
+See [tutorials/](tutorials) for comprehensive demos:
 
 ```sh
-$ git fetch upstream # updates are saved in a new branch upstream/master
-$ git merge upstream/master # merge 2 branches: upstream/master and master
+gears tutorials/output/demo_event.mac   # event mode
+gears tutorials/output/demo_step.mac    # step mode
+gears tutorials/output/demo_score.mac   # mesh scoring
+gears tutorials/output/radiate.mac      # classic demo
 ```
 
-If the merge is successful, run `git push` to update your forked GEARS repository on GitHub.
+## Environment
 
-You can initiate a [pull request on GitHub](https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/about-pull-requests) if you'd like to have your update being absorbed in [the original GEARS repository][GEARS].
+Provided by `flake.nix`:
 
-### Coding convention
+| Component | Version | Purpose |
+|-----------|---------|---------|
+| Geant4 | 11.4.2 | Transport engine + all 15 data datasets |
+| ROOT | 6.40.00 | PyROOT for analysis |
+| Python | 3.14.7 | PyROOT + uproot/matplotlib (via uv) |
+| cmake | — | Build system |
+| GDML | enabled | Geometry import/export (xercesc) |
+| ScoringManager | enabled | `/score/` mesh commands |
 
-#### G4cout VS std::cout
+Python dependencies managed by uv (`pyproject.toml`): uproot, matplotlib, numpy.
 
-`G4cout` and `G4endl` is preferred over `std:cout` and `std:endl` because the former handle the output in [Geant4][] GUI correctly, while the later can only output to terminal.
+## License
 
-#### Indentation
-
-Two spaces instead of a tab are used to indent a line in [gears.cc](gears.cc) to insure a consistent appearance in different text editors, and to avoid wasting space in front of deeply nested code blocks. The following mode lines are added to the end of [gears.cc](gears.cc) to insure that in [Vim][] and [Emacs][]:
-
-```cpp
-// -*- C++; indent-tabs-mode:nil; tab-width:2 -*-
-// vim: ft=cpp:ts=2:sts=2:sw=2:et
-```
-
-[Vim]: https://www.vim.org/
-[Emacs]: https://www.gnu.org/software/emacs/
-
+See [LICENSE](LICENSE).
