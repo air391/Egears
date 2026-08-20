@@ -2,10 +2,58 @@
  * \mainpage notitle
  * Homepage: <https://github.com/jintonic/gears>
  */
+#include <set>
 #include <vector>
 using namespace std;
 #include <G4SteppingManager.hh>
 #include <G4SteppingVerbose.hh>
+#include <G4UIcmdWithAString.hh>
+#include <G4UImessenger.hh>
+//______________________________________________________________________________
+//
+static set<G4String> sensitiveVolumes;
+static G4String outputMode = "event";
+static int maxStepsPerEvent = 10000;
+//______________________________________________________________________________
+//
+class SensitiveMessenger : public G4UImessenger {
+  G4UIcmdWithAString *fCmd;
+public:
+  SensitiveMessenger() {
+    fCmd = new G4UIcmdWithAString("/sensitive/add", this);
+    fCmd->SetGuidance("Mark a logical volume as sensitive");
+    fCmd->SetParameterName("volume", false);
+    fCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+  }
+  ~SensitiveMessenger() { delete fCmd; }
+  void SetNewValue(G4UIcommand *, G4String value) {
+    sensitiveVolumes.insert(value);
+    G4cout << "GEARS: sensitive volume added: " << value << G4endl;
+  }
+};
+//______________________________________________________________________________
+//
+class OutputMessenger : public G4UImessenger {
+  G4UIcmdWithAString *fCmdMode;
+  G4UIcommand *fCmdMax;
+public:
+  OutputMessenger() {
+    fCmdMode = new G4UIcmdWithAString("/output/mode", this);
+    fCmdMode->SetGuidance("Set output mode: event or step");
+    fCmdMode->SetCandidates("event step");
+    fCmdMode->AvailableForStates(G4State_PreInit);
+    fCmdMax = new G4UIcommand("/output/maxSteps", this);
+    fCmdMax->SetGuidance("Max step points per event (step mode only)");
+    auto *p = new G4UIparameter("n", 'i', false);
+    fCmdMax->SetParameter(p);
+    fCmdMax->AvailableForStates(G4State_PreInit);
+  }
+  ~OutputMessenger() { delete fCmdMode; delete fCmdMax; }
+  void SetNewValue(G4UIcommand *cmd, G4String value) {
+    if (cmd == fCmdMode) outputMode = value;
+    if (cmd == fCmdMax) maxStepsPerEvent = G4UIcommand::ConvertToInt(value);
+  }
+};
 /**
  * Dump simulation results to screen or a file.
  */
@@ -14,6 +62,7 @@ protected:
   void Record(); ///< Record simulated data
 public:
   Output(); ///< use analysis manager to handle output
+  void BookNtuple(); ///< create ntuple (called from BeginOfRunAction)
   void TrackingStarted() {
     G4SteppingVerbose::TrackingStarted();
     Record();
@@ -47,9 +96,18 @@ public:
     pz.clear();
     q.clear();
     et.clear();
+    pdg0 = 0;
+    k0 = 0;
+    etotal = 0;
+    stepOverflow = false;
   }
   void SetSteppingVerbose(int level) { fManager->SetVerboseLevel(level); }
   int GetSteppingVerbose() { return fManager->GetverboseLevel(); }
+
+  int pdg0;           ///< source particle PDG encoding
+  double k0;          ///< source particle kinetic energy [keV]
+  double etotal;      ///< total energy deposit in sensitive volumes [keV]
+  bool stepOverflow;  ///< true if step limit exceeded
 
   vector<int> trk;   ///< track ID
   vector<int> stp;   ///< step number
@@ -79,35 +137,54 @@ public:
 //______________________________________________________________________________
 //
 #include <G4AnalysisManager.hh>
-Output::Output() : G4SteppingVerbose() {
+Output::Output() : G4SteppingVerbose(), pdg0(0), k0(0), etotal(0),
+    stepOverflow(false) {
+  G4AnalysisManager::Instance(); // register /analysis/ UI commands
+}
+//______________________________________________________________________________
+//
+void Output::BookNtuple() {
   auto manager = G4AnalysisManager::Instance();
-  manager->CreateNtuple("t", "Geant4 step points");
-  manager->CreateNtupleIColumn("n"); // total number of recorded hits
-  manager->CreateNtupleIColumn("m"); // max copy number of sensitive volume
-  manager->CreateNtupleIColumn("trk", trk);
-  manager->CreateNtupleIColumn("stp", stp);
-  manager->CreateNtupleIColumn("vlm", vlm);
-  manager->CreateNtupleIColumn("pro", pro);
-  manager->CreateNtupleIColumn("pdg", pdg);
-  manager->CreateNtupleIColumn("pid", pid);
-  manager->CreateNtupleDColumn("xx", xx);
-  manager->CreateNtupleDColumn("yy", yy);
-  manager->CreateNtupleDColumn("zz", zz);
-  manager->CreateNtupleDColumn("dt", dt);
-  manager->CreateNtupleDColumn("de", de);
-  manager->CreateNtupleDColumn("dl", dl);
-  manager->CreateNtupleDColumn("l", l);
-  manager->CreateNtupleDColumn("x", x);
-  manager->CreateNtupleDColumn("y", y);
-  manager->CreateNtupleDColumn("z", z);
-  manager->CreateNtupleDColumn("t", t);
-  manager->CreateNtupleDColumn("k", k);
-  manager->CreateNtupleDColumn("p", p);
-  manager->CreateNtupleDColumn("px", px);
-  manager->CreateNtupleDColumn("py", py);
-  manager->CreateNtupleDColumn("pz", pz);
-  manager->CreateNtupleDColumn("q", q);
-  manager->CreateNtupleDColumn("et", et);
+  if (outputMode == "event") {
+    manager->CreateNtuple("t", "gears events");
+    manager->CreateNtupleIColumn("n");
+    manager->CreateNtupleIColumn("m");
+    manager->CreateNtupleIColumn("pdg0");
+    manager->CreateNtupleDColumn("k0");
+    manager->CreateNtupleDColumn("etotal");
+    manager->CreateNtupleDColumn("et", et);
+  } else {
+    manager->CreateNtuple("t", "gears step points");
+    manager->CreateNtupleIColumn("n");
+    manager->CreateNtupleIColumn("m");
+    manager->CreateNtupleIColumn("trk", trk);
+    manager->CreateNtupleIColumn("stp", stp);
+    manager->CreateNtupleIColumn("vlm", vlm);
+    manager->CreateNtupleIColumn("pro", pro);
+    manager->CreateNtupleIColumn("pdg", pdg);
+    manager->CreateNtupleIColumn("pid", pid);
+    manager->CreateNtupleDColumn("xx", xx);
+    manager->CreateNtupleDColumn("yy", yy);
+    manager->CreateNtupleDColumn("zz", zz);
+    manager->CreateNtupleDColumn("dt", dt);
+    manager->CreateNtupleDColumn("de", de);
+    manager->CreateNtupleDColumn("dl", dl);
+    manager->CreateNtupleDColumn("l", l);
+    manager->CreateNtupleDColumn("x", x);
+    manager->CreateNtupleDColumn("y", y);
+    manager->CreateNtupleDColumn("z", z);
+    manager->CreateNtupleDColumn("t", t);
+    manager->CreateNtupleDColumn("k", k);
+    manager->CreateNtupleDColumn("p", p);
+    manager->CreateNtupleDColumn("px", px);
+    manager->CreateNtupleDColumn("py", py);
+    manager->CreateNtupleDColumn("pz", pz);
+    manager->CreateNtupleDColumn("q", q);
+    manager->CreateNtupleDColumn("et", et);
+    manager->CreateNtupleIColumn("pdg0");
+    manager->CreateNtupleDColumn("k0");
+    manager->CreateNtupleDColumn("etotal");
+  }
   manager->FinishNtuple();
 }
 //______________________________________________________________________________
@@ -118,15 +195,19 @@ void Output::Record() {
     CopyState();        // point fTrack, fStep, etc. to right places
 
   G4TouchableHandle handle = fStep->GetPreStepPoint()->GetTouchableHandle();
-  int copyNo = handle->GetReplicaNumber();
-  if (copyNo <= 0)
-    return; // skip uninteresting volumes (copy No. of world == 0)
-  if (trk.size() >= 10000) {
-    G4cout << "GEARS: # of step points >=10000. Recording stopped." << G4endl;
-    fTrack->SetTrackStatus(fKillTrackAndSecondaries);
-    return;
-  }
+  G4String volName = handle->GetVolume()->GetLogicalVolume()->GetName();
+  if (sensitiveVolumes.find(volName) == sensitiveVolumes.end())
+    return; // skip non-sensitive volumes
 
+  if (outputMode == "step" && !stepOverflow) {
+    if (trk.size() >= (size_t)maxStepsPerEvent) {
+      stepOverflow = true;
+    }
+  }
+  if (outputMode == "step" && stepOverflow)
+    return; // stop recording steps but continue physics
+
+  int copyNo = handle->GetReplicaNumber();
   trk.push_back(fTrack->GetTrackID());
   stp.push_back(fTrack->GetCurrentStepNumber());
   vlm.push_back(copyNo);
@@ -169,8 +250,8 @@ void Output::Record() {
   zz.push_back(pos.z() / CLHEP::mm);
   dt.push_back(fTrack->GetLocalTime() / CLHEP::ns);
 
-  if (de.back() > 0 &&
-      G4StrUtil::contains(handle->GetVolume()->GetName(), "(S)")) {
+  if (de.back() > 0) {
+    int copyNo = handle->GetReplicaNumber();
     if (et.size() < (unsigned int)copyNo + 1)
       et.resize((unsigned int)copyNo + 1);
     et[copyNo] += de.back();
@@ -180,7 +261,6 @@ void Output::Record() {
 //______________________________________________________________________________
 //
 #include <G4NistManager.hh>
-#include <G4UImessenger.hh>
 #include <G4tgbVolumeMgr.hh>
 //______________________________________________________________________________
 //
@@ -195,9 +275,7 @@ public:
 //______________________________________________________________________________
 //
 #include <G4UIcmdWith3VectorAndUnit.hh>
-#include <G4UIcmdWithAString.hh>
 #include <G4UIdirectory.hh>
-#include <G4UImessenger.hh>
 #include <G4VUserDetectorConstruction.hh>
 /**
  * Construct detector geometry.
@@ -362,8 +440,9 @@ public:
     auto a = G4AnalysisManager::Instance();
     if (a->GetFileName() == "")
       return;
-    a->OpenFile();
     Output *o = ((Output *)G4VSteppingVerbose::GetInstance());
+    o->BookNtuple();
+    a->OpenFile();
     if (o->GetSteppingVerbose() == 0) { // in case of /tracking/verbose 0
       o->SetSilent(1);                  // avoid screen dump
       o->SetSteppingVerbose(1);         // enable calling StepInfo() in
@@ -380,25 +459,58 @@ public:
 };
 //______________________________________________________________________________
 //
-void SaveAndResetEvent() {
-  auto a = G4AnalysisManager::Instance();
-  Output *o = ((Output *)G4VSteppingVerbose::GetInstance());
-  if (a->GetFileName() != "" && o->stp.size() != 0) {
-    a->FillNtupleIColumn(0, o->stp.size());
-    a->FillNtupleIColumn(1, o->et.size() - 1);
-    a->AddNtupleRow();
-  } // save n-tuple if it is not empty and output file name is specified
-  o->Reset(); // reset Output member variables for new record
-} ///< save and then reset an event
-//______________________________________________________________________________
-//
+#include <G4Event.hh>
+#include <G4PrimaryParticle.hh>
+#include <G4PrimaryVertex.hh>
 #include <G4UserEventAction.hh>
 /**
  * Book keeping before and after an event.
  */
 class EventAction : public G4UserEventAction {
 public:
-  void EndOfEventAction(const G4Event *) { SaveAndResetEvent(); }
+  void BeginOfEventAction(const G4Event *evt) {
+    Output *o = ((Output *)G4VSteppingVerbose::GetInstance());
+    o->pdg0 = 0;
+    o->k0 = 0;
+    o->etotal = 0;
+    o->stepOverflow = false;
+    auto *vtx = evt->GetPrimaryVertex(0);
+    if (vtx) {
+      auto *p = vtx->GetPrimary(0);
+      if (p) {
+        o->pdg0 = p->GetPDGcode();
+        o->k0 = p->GetKineticEnergy() / CLHEP::keV;
+      }
+    }
+  }
+  void EndOfEventAction(const G4Event *) {
+    auto a = G4AnalysisManager::Instance();
+    Output *o = ((Output *)G4VSteppingVerbose::GetInstance());
+    if (a->GetFileName() == "") {
+      o->Reset();
+      return;
+    }
+    o->etotal = o->et.empty() ? 0 : o->et[0];
+    if (outputMode == "event") {
+      a->FillNtupleIColumn(0, o->stp.size());
+      a->FillNtupleIColumn(1, o->et.size() - 1);
+      a->FillNtupleIColumn(2, o->pdg0);
+      a->FillNtupleDColumn(3, o->k0);
+      a->FillNtupleDColumn(4, o->etotal);
+      a->AddNtupleRow();
+    } else {
+      if (!o->stp.empty()) {
+        a->FillNtupleIColumn(0, o->stp.size());
+        a->FillNtupleIColumn(1, o->et.size() - 1);
+        // columns 2-25 are vector branches (auto-filled)
+        a->FillNtupleIColumn(26, o->pdg0);
+        a->FillNtupleDColumn(27, o->k0);
+        a->FillNtupleDColumn(28, o->etotal);
+        a->AddNtupleRow();
+      }
+    }
+    o->Reset();
+  }
 };
 //______________________________________________________________________________
 //
@@ -439,7 +551,14 @@ public:
       return; // do nothing if no time window is specified
     Output *o = ((Output *)G4VSteppingVerbose::GetInstance());
     fT0 = o->t.back();   // update the reference time to the latest decay time
-    SaveAndResetEvent(); // end an event manually
+    auto a = G4AnalysisManager::Instance();
+    if (a->GetFileName() != "" && !o->stp.empty()) {
+      o->etotal = o->et.empty() ? 0 : o->et[0];
+      a->FillNtupleIColumn(0, o->stp.size());
+      a->FillNtupleIColumn(1, o->et.size() - 1);
+      a->AddNtupleRow();
+    }
+    o->Reset();
   } ///< save and reset output before processing waiting tracks
   void SetNewValue(G4UIcommand *cmd, G4String value) {
     if (cmd != fCmdT)
@@ -470,6 +589,8 @@ class Action : public G4VUserActionInitialization {
  * The main function that calls individual components.
  */
 int main(int argc, char **argv) {
+  auto *sensitiveMessenger = new SensitiveMessenger;
+  auto *outputMessenger = new OutputMessenger;
   // inherit G4SteppingVerbose instead of G4UserSteppingAction to record data
   G4VSteppingVerbose::SetInstance(new Output); // must be before run manager
   auto run =
@@ -496,6 +617,8 @@ int main(int argc, char **argv) {
   }
   delete vis;
   delete run;
+  delete outputMessenger;
+  delete sensitiveMessenger;
   return 0;
 }
 // -*- C++; indent-tabs-mode:nil; tab-width:2 -*-
