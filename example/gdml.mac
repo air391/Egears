@@ -1,0 +1,14 @@
+# gdml.mac - event mode, GDML geometry
+# first generate GDML: ../build/gears gen_gdml.mac
+/geometry/source detector.gdml
+/sensitive/add crystal
+/output/mode event
+/output/maxSteps 50000
+/run/initialize
+/gps/particle gamma
+/gps/energy 2.6 MeV
+/gps/ang/type iso
+/gps/ang/mintheta 30 deg
+/gps/ang/maxtheta 150 deg
+/analysis/setFileName output_gdml.root
+/run/beamOn 50000

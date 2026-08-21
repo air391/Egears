@@ -1,0 +1,13 @@
+# step.mac - step mode, text geometry
+/geometry/source detector.tg
+/sensitive/add crystal
+/output/mode step
+/output/maxSteps 50000
+/run/initialize
+/gps/particle gamma
+/gps/energy 2.6 MeV
+/gps/ang/type iso
+/gps/ang/mintheta 30 deg
+/gps/ang/maxtheta 150 deg
+/analysis/setFileName output_step.root
+/run/beamOn 50000

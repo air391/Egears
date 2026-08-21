@@ -1,0 +1,13 @@
+# event.mac - event mode, text geometry
+/geometry/source detector.tg
+/sensitive/add crystal
+/output/mode event
+/output/maxSteps 50000
+/run/initialize
+/gps/particle gamma
+/gps/energy 2.6 MeV
+/gps/ang/type iso
+/gps/ang/mintheta 30 deg
+/gps/ang/maxtheta 150 deg
+/analysis/setFileName output_event.root
+/run/beamOn 50000

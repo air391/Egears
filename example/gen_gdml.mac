@@ -1,0 +1,4 @@
+# gen_gdml.mac - generate GDML from text geometry
+/geometry/source detector.tg
+/run/initialize
+/geometry/export detector.gdml
